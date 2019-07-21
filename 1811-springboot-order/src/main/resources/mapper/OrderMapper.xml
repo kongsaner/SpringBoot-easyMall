@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jt.order.mapper.OrderMapper">
+	<select id="queryOrders" parameterType="String" resultMap="orderRM">
+		select * from t_order where user_id=#{userId} order by order_time desc;
+	</select>
+	<!-- 根据已经查询到的order对象的orderId值,查询相关的t_order_item数据 -->
+	<select id="queryOrderItems" parameterType="String" resultType="OrderItem">
+		select * from t_order_item where order_id=#{orderId};
+	</select>
+	<!-- 构造resultMap,将查询到到一个order对象与关联的多个item对象封装到一起 -->
+	<resultMap type="Order" id="orderRM">
+	<!-- 使用Order对象的orderId属性,对应查询时order_id,t_ORDER_item的字段名 -->
+	<id property="orderId" column="order_id"/>
+	<!-- 定义1对多 开始封装每个Order对象的orderItems-->
+	<collection property="orderItems" javaType="ArrayList" ofType="OrderItem" column="order_id" select="queryOrderItems"></collection>
+	</resultMap>
+	
+	<!-- 单个表格操作insert -->
+	<insert id="addOrder" parameterType="Order">
+	<!-- t_order表格新增数据 -->
+	insert into t_order (
+	order_id,order_money,order_receiverinfo,
+	order_paystate,user_id,order_time
+	) values (
+	#{orderId},#{orderMoney},#{orderReceiverinfo},
+	#{orderPaystate},#{userId},#{orderTime}
+	);
+	<!-- t_order_item 插入数据 -->
+	insert into t_order_item (
+	order_id,product_id,num,
+	product_image,product_price,product_name
+	) values 
+	<!--collection 获取当前参数Order 的属性值List<OrderItem>  -->
+	<!-- item 对List对象的每个元素变量引用 product  -->
+	<!-- foreach标签内容每个product进行一次单独封装,separatro隔离
+	(一大堆参数来自于第一个OrderItem数据),(第二个OrderItem数据),(),(),() -->
+	<foreach collection="orderItems" item="product" separator=",">
+	(#{orderId},#{product.productId},#{product.num},
+	 #{product.productImage},#{product.productPrice},
+	 #{product.productName})
+	</foreach>;
+	
+	</insert>
+	
+	<delete id="deleteOrder" parameterType="String">
+		DELETE a,b FROM t_order a,t_order_item b 
+		WHERE a.order_id=b.order_id AND a.order_id=#{orderId}
+	</delete>
+	<delete id="deleteOTOrder" parameterType="Date">
+		DELETE a,b FROM t_order a,t_order_item b 
+		WHERE a.order_id=b.order_id AND a.order_paystate=0 
+		and a.order_time &lt; #{otTime}
+	</delete>
+</mapper> 
+
+
+
+
+
+
+
+
+
+
+
+
